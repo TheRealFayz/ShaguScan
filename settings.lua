@@ -82,7 +82,7 @@ settings.OpenConfig = function(caption)
   if not ShaguScan_db.config[caption] then
     ShaguScan_db.config[caption] = {
       filter = "npc,infight,alive",
-      scale = 1, anchor = "CENTER", x = 0, y = 0, width = 75, height = 12, spacing = 4, maxrow = 20
+      scale = 1, anchor = "CENTER", x = 0, y = 0, width = 75, height = 12, spacing = 4, maxrow = 20, locked = false
     }
   end
 
@@ -144,6 +144,7 @@ settings.OpenConfig = function(caption)
       scale = tonumber(scale) or config.scale,
       x = tonumber(x) or config.x,
       y = tonumber(y) or config.y,
+      locked = config.locked or false,
     }
 
     ShaguScan_db.config[caption] = nil
