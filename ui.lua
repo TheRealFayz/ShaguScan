@@ -29,6 +29,10 @@ ui.CreateRoot = function(parent, caption)
   frame:SetMovable(true)
 
   frame:SetScript("OnDragStart", function()
+    -- Check if frame is locked before allowing drag
+    local config = ShaguScan_db.config[this.id]
+    if config.locked then return end
+    
     this.lock = true
     this:StartMoving()
   end)
@@ -63,18 +67,81 @@ ui.CreateRoot = function(parent, caption)
   frame.caption:SetTextColor(1, 1, 1, 1)
   frame.caption:SetText(caption)
 
+  -- create lock checkbox
+  frame.lockbox = CreateFrame("CheckButton", nil, frame)
+  frame.lockbox:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
+  frame.lockbox:SetWidth(12)
+  frame.lockbox:SetHeight(12)
+
+  -- Create checkbox background
+  frame.lockbox:SetNormalTexture("Interface\\Buttons\\UI-CheckBox-Up")
+  frame.lockbox:SetPushedTexture("Interface\\Buttons\\UI-CheckBox-Down")
+  frame.lockbox:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight")
+  
+  -- Create the checkmark texture
+  frame.lockbox.check = frame.lockbox:CreateTexture(nil, "OVERLAY")
+  frame.lockbox.check:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
+  frame.lockbox.check:SetAllPoints(frame.lockbox)
+  
+  -- Set initial state based on saved config
+  local config = ShaguScan_db.config[caption]
+  if config and config.locked then
+    frame.lockbox.check:Show()
+    frame.lockbox.check:SetVertexColor(1, 0.2, 0.2) -- Red when locked
+  else
+    frame.lockbox.check:Show()
+    frame.lockbox.check:SetVertexColor(0.2, 1, 0.2) -- Green when unlocked
+  end
+
+  frame.lockbox:SetScript("OnEnter", function()
+    GameTooltip:SetOwner(this, "ANCHOR_LEFT")
+    local config = ShaguScan_db.config[this:GetParent().id]
+    if config.locked then
+      GameTooltip:SetText("Locked - Click to unlock")
+    else
+      GameTooltip:SetText("Unlocked - Click to lock")
+    end
+    GameTooltip:Show()
+  end)
+
+  frame.lockbox:SetScript("OnLeave", function()
+    GameTooltip:Hide()
+  end)
+
+  frame.lockbox:SetScript("OnClick", function()
+    local config = ShaguScan_db.config[this:GetParent().id]
+    config.locked = not config.locked
+    
+    if config.locked then
+      this.check:SetVertexColor(1, 0.2, 0.2) -- Red when locked
+      this:GetParent():EnableMouse(false)
+    else
+      this.check:SetVertexColor(0.2, 1, 0.2) -- Green when unlocked
+      this:GetParent():EnableMouse(true)
+    end
+    
+    -- Update tooltip if still hovering
+    if MouseIsOver(this) then
+      GameTooltip:SetText(config.locked and "Locked - Click to unlock" or "Unlocked - Click to lock")
+    end
+  end)
+
   -- create option button
   frame.settings = CreateFrame("Button", nil, frame)
-  frame.settings:SetPoint("RIGHT", frame.caption, "LEFT", -2, 0)
+  frame.settings:SetPoint("RIGHT", frame.lockbox, "LEFT", -2, 0)
   frame.settings:SetWidth(8)
   frame.settings:SetHeight(8)
 
   frame.settings:SetScript("OnEnter", function()
     frame.settings.tex:SetAlpha(1)
+    GameTooltip:SetOwner(this, "ANCHOR_LEFT")
+    GameTooltip:SetText("Open Settings")
+    GameTooltip:Show()
   end)
 
   frame.settings:SetScript("OnLeave", function()
     frame.settings.tex:SetAlpha(.5)
+    GameTooltip:Hide()
   end)
 
   frame.settings.tex = frame.settings:CreateTexture(nil, 'OVERLAY')
@@ -263,6 +330,22 @@ ui:SetScript("OnUpdate", function()
 
     -- skip if locked (due to moving)
     if root.lock then return end
+    
+    -- Update mouse interaction based on locked state
+    if config.locked then
+      root:EnableMouse(false)
+    else
+      root:EnableMouse(true)
+    end
+    
+    -- Update checkbox appearance based on current locked state
+    if root.lockbox and root.lockbox.check then
+      if config.locked then
+        root.lockbox.check:SetVertexColor(1, 0.2, 0.2) -- Red when locked
+      else
+        root.lockbox.check:SetVertexColor(0.2, 1, 0.2) -- Green when unlocked
+      end
+    end
 
     -- update position based on config
     if not root.pos or root.pos ~= config.anchor..config.x..config.y..config.scale then
